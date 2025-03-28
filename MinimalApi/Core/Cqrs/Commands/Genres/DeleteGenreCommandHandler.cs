@@ -17,9 +17,8 @@ public class DeleteGenreCommandHandler : IRequestHandler<DeleteGenreCommand>
     public async Task Handle(DeleteGenreCommand request, CancellationToken cancellationToken)
     {
         var genre = await _genreRepository
-            .GetEntities()
-            .FirstOrDefaultAsync(e => e.Id == request.Id, cancellationToken);
-        _genreRepository.Delete(genre);
+            .GetByIdAsync(request.Id);
+        await _genreRepository.DeleteAsync(genre);
         await _genreRepository.SaveChangesAsync(cancellationToken);
     }
 }

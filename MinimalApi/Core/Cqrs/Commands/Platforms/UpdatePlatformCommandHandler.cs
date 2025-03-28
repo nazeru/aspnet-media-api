@@ -20,8 +20,7 @@ public class UpdatePlatformCommandHandler : IRequestHandler<UpdatePlatformComman
     public async Task<PlatformModel> Handle(UpdatePlatformCommand request, CancellationToken cancellationToken)
     {
         var platform = await _platformRepository
-            .GetEntities()
-            .FirstOrDefaultAsync(e => e.Id == request.Id, cancellationToken);
+            .GetByIdAsync(request.Id);
 
         if (platform != null)
         {

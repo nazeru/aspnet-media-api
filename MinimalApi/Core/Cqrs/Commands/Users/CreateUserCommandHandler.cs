@@ -32,7 +32,7 @@ public class CreateUserCommandHandler : IRequestHandler<CreateUserCommand, UserM
         // }
         var userEntity = _mapper.Map<UserEntity>(request);
         
-        _userRepository.Add(userEntity);
+        await _userRepository.InsertAsync(userEntity);
         await _userRepository.SaveChangesAsync(cancellationToken);
 
         return _mapper.Map<UserModel>(userEntity);

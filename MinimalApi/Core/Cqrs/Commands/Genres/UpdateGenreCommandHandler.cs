@@ -20,8 +20,7 @@ public class UpdateGenreCommandHandler : IRequestHandler<UpdateGenreCommand, Gen
     public async Task<GenreModel> Handle(UpdateGenreCommand request, CancellationToken cancellationToken)
     {
         var genre = await _genreRepository
-            .GetEntities()
-            .FirstOrDefaultAsync(e => e.Id == request.Id, cancellationToken);
+            .GetByIdAsync(request.Id);
 
         if (genre != null)
         {

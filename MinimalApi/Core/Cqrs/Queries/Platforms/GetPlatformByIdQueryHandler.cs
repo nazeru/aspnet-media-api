@@ -20,8 +20,7 @@ public class GetPlatformByIdQueryHandler : IRequestHandler<GetPlatformByIdQuery,
     public async Task<PlatformModel> Handle(GetPlatformByIdQuery request, CancellationToken cancellationToken)
     {
         var platform = await _platformRepository
-            .GetEntities()
-            .FirstOrDefaultAsync(x => x.Id == request.Id, cancellationToken);
+            .GetByIdAsync(request.Id);
         return _mapper.Map<PlatformModel>(platform);
     }
 }

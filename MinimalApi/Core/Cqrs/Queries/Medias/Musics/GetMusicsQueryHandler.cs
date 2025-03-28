@@ -22,10 +22,9 @@ public class GetMusicsQueryHandler : IRequestHandler<GetMusicsQuery, List<MusicM
 
     public async Task<List<MusicModel>> Handle(GetMusicsQuery request, CancellationToken cancellationToken)
     {
-        var musics = await _musicRepository
-            .GetEntities()
-            .Include(m => m.Genres)
-            .ToListAsync();
-        return _mapper.Map<List<MusicModel>>(musics);
+        var query = _musicRepository.Query
+            .Include(e => e.Genres);
+
+        return _mapper.Map<List<MusicModel>>(await query.ToListAsync(cancellationToken));
     }
 }

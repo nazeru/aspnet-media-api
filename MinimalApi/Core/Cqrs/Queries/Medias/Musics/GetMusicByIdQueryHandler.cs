@@ -19,9 +19,10 @@ public class GetMusicByIdQueryHandler : IRequestHandler<GetMusicByIdQuery, Music
     
     public async Task<MusicModel> Handle(GetMusicByIdQuery request, CancellationToken cancellationToken)
     {
-        var music = await _musicRepository
-            .GetEntities()
-            .FirstOrDefaultAsync(e => e.Id == request.Id, cancellationToken);
+        var music = _musicRepository
+            .Query
+            .Include(e => e.Genres)
+            .Single(e => e.Id == request.Id);
         
         return _mapper.Map<MusicModel>(music);
     }

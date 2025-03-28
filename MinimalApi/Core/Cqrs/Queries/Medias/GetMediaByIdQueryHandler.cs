@@ -19,9 +19,10 @@ public class GetMediaByIdQueryHandler : IRequestHandler<GetMediaByIdQuery, Media
     
     public async Task<MediaModel> Handle(GetMediaByIdQuery request, CancellationToken cancellationToken)
     {
-        var media = await _mediaRepository
-            .GetEntities()
-            .FirstOrDefaultAsync(e => e.Id == request.Id, cancellationToken);
+        var media = _mediaRepository
+            .Query
+            .Include(e => e.Genres)
+            .Single(e => e.Id == request.Id);
         
         return _mapper.Map<MediaModel>(media);
     }

@@ -20,8 +20,7 @@ public class UpdateMovieCommandHandler : IRequestHandler<UpdateMovieCommand, Mov
     public async Task<MovieModel> Handle(UpdateMovieCommand request, CancellationToken cancellationToken)
     {
         var movie = await _movieRepository
-            .GetEntities()
-            .FirstOrDefaultAsync(e => e.Id == request.Id, cancellationToken);
+            .GetByIdAsync(request.Id);
 
         if (movie != null)
         {

@@ -20,8 +20,7 @@ public class PatchUserCommandHandler : IRequestHandler<PatchUserCommand, UserMod
     public async Task<UserModel> Handle(PatchUserCommand request, CancellationToken cancellationToken)
     {
         var user = await _userRepository
-            .GetEntities()
-            .FirstOrDefaultAsync(e => e.Id == request.Id, cancellationToken);
+            .GetByIdAsync(request.Id);
         request.Content.ApplyTo(user);
         await _userRepository.SaveChangesAsync(cancellationToken);
         return _mapper.Map<UserModel>(user);

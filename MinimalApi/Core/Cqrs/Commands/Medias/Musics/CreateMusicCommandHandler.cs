@@ -30,8 +30,7 @@ public class CreateMusicCommandHandler : IRequestHandler<CreateMusicCommand, Mus
     {
         // Получаем платформу по PlatformId
         var platform = await _platformRepository
-            .GetEntities()
-            .FirstOrDefaultAsync(e => e.Id == request.PlatformId, cancellationToken);
+            .GetByIdAsync(request.PlatformId);
         if (platform == null)
         {
             throw new ExternalException("Platform not found");
@@ -39,9 +38,7 @@ public class CreateMusicCommandHandler : IRequestHandler<CreateMusicCommand, Mus
         
         // Получаем все жанры по их ID
         var genres = await _genreRepository
-            .GetEntities()
-            .Where(e => request.GenresId.Contains(e.Id))
-            .ToListAsync(cancellationToken);
+            .GetByIdsAsync(request.GenresId);
         if (genres == null || genres.Count == 0)
         {
             throw new ExternalException("Genres not found");
@@ -53,7 +50,7 @@ public class CreateMusicCommandHandler : IRequestHandler<CreateMusicCommand, Mus
         music.Genres = genres;
 
         // Добавляем музыку в репозиторий
-        _musicRepository.Add(music);
+        await _musicRepository.InsertAsync(music);
         await _musicRepository.SaveChangesAsync(cancellationToken);
 
         // Маппим MusicEntity обратно в MusicModel для ответа

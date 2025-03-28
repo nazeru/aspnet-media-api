@@ -20,8 +20,7 @@ public class PatchPlatformCommandHandler : IRequestHandler<PatchPlatformCommand,
     public async Task<PlatformModel> Handle(PatchPlatformCommand request, CancellationToken cancellationToken)
     {
         var platform = await _platformRepository
-            .GetEntities()
-            .FirstOrDefaultAsync(e => e.Id == request.Id, cancellationToken);
+            .GetByIdAsync(request.Id);
         request.Content.ApplyTo(platform);
         await _platformRepository.SaveChangesAsync(cancellationToken);
         return _mapper.Map<PlatformModel>(platform);

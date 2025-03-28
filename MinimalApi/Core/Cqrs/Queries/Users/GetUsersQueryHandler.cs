@@ -1,6 +1,5 @@
 using AutoMapper;
 using MediatR;
-using Microsoft.EntityFrameworkCore;
 using MinimalApi.Core.Entities;
 using MinimalApi.Core.Repositories;
 
@@ -19,9 +18,8 @@ public class GetUsersQueryHandler : IRequestHandler<GetUsersQuery, List<UserMode
     
     public async Task<List<UserModel>> Handle(GetUsersQuery request, CancellationToken cancellationToken)
     {
-        var users =  await _userRepository
-            .GetEntities()
-            .ToListAsync(cancellationToken);
+        var users = await _userRepository
+            .GetAllAsync();
         return _mapper.Map<List<UserModel>>(users);
     }
 }

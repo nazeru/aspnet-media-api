@@ -20,8 +20,7 @@ public class PatchGenreCommandHandler : IRequestHandler<PatchGenreCommand, Genre
     public async Task<GenreModel> Handle(PatchGenreCommand request, CancellationToken cancellationToken)
     {
         var genre = await _genreRepository
-            .GetEntities()
-            .FirstOrDefaultAsync(e => e.Id == request.Id, cancellationToken);
+            .GetByIdAsync(request.Id);
         request.Content.ApplyTo(genre);
         await _genreRepository.SaveChangesAsync(cancellationToken);
         return _mapper.Map<GenreModel>(genre);

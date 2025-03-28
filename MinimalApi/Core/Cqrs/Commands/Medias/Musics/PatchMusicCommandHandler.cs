@@ -20,8 +20,7 @@ public class PatchMusicCommandHandler : IRequestHandler<PatchMusicCommand, Music
     public async Task<MusicModel> Handle(PatchMusicCommand request, CancellationToken cancellationToken)
     {
         var music = await _musicRepository
-            .GetEntities()
-            .FirstOrDefaultAsync(e => e.Id == request.Id, cancellationToken);
+            .GetByIdAsync(request.Id);
         request.Content.ApplyTo(music);
         await _musicRepository.SaveChangesAsync(cancellationToken);
         return _mapper.Map<MusicModel>(music);

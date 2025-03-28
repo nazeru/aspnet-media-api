@@ -1,40 +1,55 @@
+using MinimalApi.Core.Caching;
+using MinimalApi.Core.Entities;
+using MinimalApi.Shared;
+
 namespace MinimalApi.Core.Repositories;
 
-public interface IEntityRepository<TEntity>
+/// <summary>
+/// Репозиторий
+/// </summary>
+public partial interface IEntityRepository<TEntity> where TEntity : BaseEntity
 {
-    IQueryable<TEntity> GetEntities();
+    Task<TEntity?> GetByIdAsync(int id, Func<ICacheManager, CacheKey>? getCacheKey = null, bool includeDeleted = false);
 
-    void Add(TEntity entity);
+    Task<IList<TEntity>> GetByIdsAsync(IEnumerable<int> ids, Func<ICacheManager, CacheKey>? getCacheKey = null, bool includeDeleted = false);
 
-    void AddRange(IEnumerable<TEntity> entities);
+    IList<TEntity> GetAll(Func<IQueryable<TEntity>, IQueryable<TEntity>>? func = null,
+        Func<ICacheManager, CacheKey>? getCacheKey = null, bool includeDeleted = false);
 
-    void Update(TEntity entity);
+    Task<IList<TEntity>> GetAllAsync(Func<ICacheManager, CacheKey>? getCacheKey = null, bool includeDeleted = false);
 
-    void Delete(TEntity entity);
+    Task<IList<TEntity>> GetAllAsync(Func<IQueryable<TEntity>, IQueryable<TEntity>> func,
+        Func<ICacheManager, CacheKey>? getCacheKey = null, bool includeDeleted = false);
 
-    void DeleteRange(IEnumerable<TEntity> entities);
+    Task<IList<TEntity>> GetAllAsync(Func<IQueryable<TEntity>, Task<IQueryable<TEntity>>> func,
+        Func<ICacheManager, CacheKey>? getCacheKey = null, bool includeDeleted = false);
 
-    Task<List<TEntity>> ToListAsync(
-        IQueryable<TEntity> queryable,
-        CancellationToken cancellationToken = default(CancellationToken));
+    Task<PagedList<TEntity>> GetAllPagedAsync(int pageIndex = 0, int pageSize = int.MaxValue,
+        bool getOnlyTotalCount = false, bool includeDeleted = false);
 
-    Task<TEntity> FirstOrDefaultAsync(
-        IQueryable<TEntity> queryable,
-        CancellationToken cancellationToken = default(CancellationToken));
+    Task<PagedList<TEntity>> GetAllPagedAsync(Func<IQueryable<TEntity>, IQueryable<TEntity>> func,
+        int pageIndex = 0, int pageSize = int.MaxValue, bool getOnlyTotalCount = false, bool includeDeleted = false);
 
-    Task<TEntity> FirstAsync(IQueryable<TEntity> queryable, CancellationToken cancellationToken = default(CancellationToken));
+    Task<PagedList<TEntity>> GetAllPagedAsync(Func<IQueryable<TEntity>, Task<IQueryable<TEntity>>> func,
+        int pageIndex = 0, int pageSize = int.MaxValue, bool getOnlyTotalCount = false, bool includeDeleted = false);
 
-    Task<TEntity> SingleOrDefaultAsync(
-        IQueryable<TEntity> queryable,
-        CancellationToken cancellationToken = default(CancellationToken));
+    Task<bool> AnyAsync(Func<IQueryable<TEntity>, IQueryable<TEntity>> func, bool includeDeleted = false);
 
-    Task<TEntity> SingleAsync(
-        IQueryable<TEntity> queryable,
-        CancellationToken cancellationToken = default(CancellationToken));
+    Task<int> CountAsync(Func<IQueryable<TEntity>, IQueryable<TEntity>> func, bool includeDeleted = false);
 
-    Task<bool> AnyAsync(IQueryable<TEntity> queryable, CancellationToken cancellationToken = default(CancellationToken));
+    Task InsertAsync(TEntity entity, bool publishEvent = true);
 
-    Task<int> CountAsync(IQueryable<TEntity> queryable, CancellationToken cancellationToken = default(CancellationToken));
-    
+    Task InsertAsync(IList<TEntity> entities, bool publishEvent = true);
+
+    Task UpdateAsync(TEntity entity, bool publishEvent = true);
+
+    Task UpdateAsync(IList<TEntity> entities, bool publishEvent = true);
+
+    Task DeleteAsync(TEntity entity, bool publishEvent = true);
+
+    Task DeleteAsync(IList<TEntity> entities, bool publishEvent = true);
+
+    IQueryable<TEntity> Query { get; }
+
     Task SaveChangesAsync(CancellationToken cancellationToken = default);
 }

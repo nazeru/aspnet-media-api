@@ -20,8 +20,7 @@ public class GetUserByIdQueryHandler : IRequestHandler<GetUserByIdQuery, UserMod
     public async Task<UserModel> Handle(GetUserByIdQuery request, CancellationToken cancellationToken)
     {
         var user = await _userRepository
-            .GetEntities()
-            .FirstOrDefaultAsync(e => e.Id == request.Id, cancellationToken);
+            .GetByIdAsync(request.Id);
         
         return _mapper.Map<UserModel>(user);
     }

@@ -1,106 +1,370 @@
 using Microsoft.EntityFrameworkCore;
+using MinimalApi.Core.Caching;
+using MinimalApi.Core.Entities;
 using MinimalApi.Core.Repositories;
+using MinimalApi.Data.Extensions;
+using MinimalApi.Shared;
 
 namespace MinimalApi.Data.Repositories;
 
-public class EntityRepository<TEntity> : IEntityRepository<TEntity> where TEntity : class
+/// <inheritdoc/>
+public class EntityRepository<TEntity> : IEntityRepository<TEntity> where TEntity : BaseEntity
 {
-    protected readonly IDatabaseFactory DatabaseFactory;
+    private readonly ApplicationContext _context;
+    private readonly ICacheManager _staticCacheManager;
 
-    protected DbContext Context => this.DatabaseFactory.Get();
-
-    protected DbSet<TEntity> Entities => this.Context.Set<TEntity>();
-
-    public EntityRepository(IDatabaseFactory databaseFactory) => this.DatabaseFactory = databaseFactory;
-
-    public virtual IQueryable<TEntity> GetEntities() => (IQueryable<TEntity>) this.Entities;
-
-    public virtual async Task<TEntity> GetByKeyAsync(params object[] keys) => await this.Entities.FindAsync(keys);
-
-    public virtual async Task<TEntity> GetByKeyAsync(
-      object[] keys,
-      CancellationToken cancellationToken)
+    /// <summary>
+    /// ctor
+    /// </summary>
+    /// <param name="context"></param>
+    /// <param name="staticCacheManager"></param>
+    public EntityRepository(ApplicationContext context, ICacheManager staticCacheManager)
     {
-        return await this.Entities.FindAsync(keys, cancellationToken);
+        _context = context;
+        _staticCacheManager = staticCacheManager;
     }
 
-    public virtual void Add(TEntity entity) => this.Entities.Add(entity);
-
-    public virtual void AddRange(IEnumerable<TEntity> entities) => Entities.AddRange(entities);
-
-    public virtual void Update(TEntity entity)
+    /// <inheritdoc/>
+    public virtual async Task<TEntity?> GetByIdAsync(int id, Func<ICacheManager, CacheKey>? getCacheKey = null,
+        bool includeDeleted = false)
     {
-        if (this.Context.Entry<TEntity>(entity).State != EntityState.Detached)
-            return;
-        this.Entities.Attach(entity);
-        this.Context.Entry<TEntity>(entity).State = EntityState.Modified;
-    }
-
-    public virtual void Delete(TEntity entity)
-    {
-        if (this.Context.Entry<TEntity>(entity).State != EntityState.Detached)
+        async Task<TEntity?> getEntityAsync()
         {
-            this.Entities.Remove(entity);
+            return await AddDeletedFilter(Query, includeDeleted).FirstOrDefaultAsync(entity => entity.Id == id);
+        }
+
+        if (getCacheKey == null)
+        {
+            return await getEntityAsync();
+        }
+
+        var cacheKey = getCacheKey(_staticCacheManager)
+            ?? _staticCacheManager.PrepareKeyForDefaultCache(EntityCacheDefaults<TEntity>.ByIdCacheKey, id);
+
+        return await _staticCacheManager.GetAsync(cacheKey, getEntityAsync);
+    }
+
+    /// <inheritdoc/>
+    public virtual async Task<IList<TEntity>> GetByIdsAsync(IEnumerable<int> ids, Func<ICacheManager, CacheKey>? getCacheKey = null,
+        bool includeDeleted = false)
+    {
+        if (ids.Count() == 0)
+        {
+            return new List<TEntity>();
+        }
+
+        async Task<IList<TEntity>?> getByIdsAsync()
+        {
+            var query = AddDeletedFilter(Query, includeDeleted);
+
+            var entries = await query.Where(entry => ids.Contains(entry.Id)).ToListAsync();
+
+            /*
+                сортируем записи в порядке переданных идентификаторов
+             */
+            var sortedEntries = new List<TEntity>();
+            foreach (var id in ids)
+            {
+                var sortedEntry = entries.Find(entry => entry.Id == id);
+                if (sortedEntry != null)
+                {
+                    sortedEntries.Add(sortedEntry);
+                }
+            }
+
+            return sortedEntries;
+        }
+
+        if (getCacheKey == null)
+        {
+            return await getByIdsAsync() ?? new List<TEntity>();
+        }
+
+        var cacheKey = getCacheKey(_staticCacheManager)
+            ?? _staticCacheManager.PrepareKeyForDefaultCache(EntityCacheDefaults<TEntity>.ByIdsCacheKey, ids);
+
+        return await _staticCacheManager.GetAsync(cacheKey, getByIdsAsync) ?? new List<TEntity>();
+    }
+
+    /// <inheritdoc/>
+    public virtual IList<TEntity> GetAll(Func<IQueryable<TEntity>, IQueryable<TEntity>>? func = null,
+       Func<ICacheManager, CacheKey>? getCacheKey = null, bool includeDeleted = false)
+    {
+        IList<TEntity> getAll()
+        {
+            var query = AddDeletedFilter(Query, includeDeleted);
+
+            query = func != null ? func(query) : query;
+
+            return query.ToList();
+        }
+
+        return GetEntities(getAll, getCacheKey) ?? new List<TEntity>();
+    }
+
+    /// <inheritdoc/>
+    public virtual async Task<IList<TEntity>> GetAllAsync(Func<ICacheManager, CacheKey>? getCacheKey = null,
+        bool includeDeleted = false)
+    {
+        async Task<IList<TEntity>?> getAllAsync()
+        {
+            var query = AddDeletedFilter(Query, includeDeleted);
+
+            return await query.ToListAsync();
+        }
+
+        return await GetEntitiesAsync(getAllAsync, getCacheKey) ?? new List<TEntity>();
+    }
+
+    /// <inheritdoc/>
+    public virtual async Task<IList<TEntity>> GetAllAsync(Func<IQueryable<TEntity>, IQueryable<TEntity>> func,
+        Func<ICacheManager, CacheKey>? getCacheKey = null, bool includeDeleted = false)
+    {
+        async Task<IList<TEntity>?> getAllAsync()
+        {
+            var query = AddDeletedFilter(Query, includeDeleted);
+            query = func(query);
+
+            return await query.ToListAsync();
+        }
+
+        return await GetEntitiesAsync(getAllAsync, getCacheKey) ?? new List<TEntity>();
+    }
+
+    /// <inheritdoc/>
+    public virtual async Task<IList<TEntity>> GetAllAsync(Func<IQueryable<TEntity>, Task<IQueryable<TEntity>>> func,
+        Func<ICacheManager, CacheKey>? getCacheKey = null, bool includeDeleted = false)
+    {
+        async Task<IList<TEntity>?> getAllAsync()
+        {
+            var query = AddDeletedFilter(Query, includeDeleted);
+            query = await func(query);
+
+            return await query.ToListAsync();
+        }
+
+        return await GetEntitiesAsync(getAllAsync, getCacheKey) ?? new List<TEntity>();
+    }
+
+    /// <inheritdoc/>
+    public virtual async Task<PagedList<TEntity>> GetAllPagedAsync(int pageIndex = 0, int pageSize = int.MaxValue,
+        bool getOnlyTotalCount = false, bool includeDeleted = false)
+    {
+        var query = AddDeletedFilter(Query, includeDeleted);
+
+        return await query.ToPagedListAsync(pageIndex, pageSize, getOnlyTotalCount);
+    }
+
+    /// <inheritdoc/>
+    public virtual async Task<PagedList<TEntity>> GetAllPagedAsync(Func<IQueryable<TEntity>, IQueryable<TEntity>> func,
+        int pageIndex = 0, int pageSize = int.MaxValue, bool getOnlyTotalCount = false, bool includeDeleted = false)
+    {
+        var query = AddDeletedFilter(Query, includeDeleted);
+
+        query = func != null ? func(query) : query;
+
+        return await query.ToPagedListAsync(pageIndex, pageSize, getOnlyTotalCount);
+    }
+
+    /// <inheritdoc/>
+    public virtual async Task<PagedList<TEntity>> GetAllPagedAsync(Func<IQueryable<TEntity>, Task<IQueryable<TEntity>>> func,
+        int pageIndex = 0, int pageSize = int.MaxValue, bool getOnlyTotalCount = false, bool includeDeleted = false)
+    {
+        var query = AddDeletedFilter(Query, includeDeleted);
+
+        query = func != null ? await func(query) : query;
+
+        return await query.ToPagedListAsync(pageIndex, pageSize, getOnlyTotalCount);
+    }
+
+    /// <inheritdoc/>
+    public async Task<bool> AnyAsync(Func<IQueryable<TEntity>, IQueryable<TEntity>> func, bool includeDeleted = false)
+    {
+        var query = AddDeletedFilter(Query, includeDeleted);
+        query = func(query);
+
+        return await query.AnyAsync();
+    }
+
+    /// <inheritdoc/>
+    public async Task<int> CountAsync(Func<IQueryable<TEntity>, IQueryable<TEntity>> func, bool includeDeleted = false)
+    {
+        var query = AddDeletedFilter(Query, includeDeleted);
+        query = func(query);
+
+        return await query.CountAsync();
+    }
+
+    /// <inheritdoc/>
+    public virtual async Task InsertAsync(TEntity entity, bool publishEvent = true)
+    {
+        if (entity == null)
+        {
+            throw new ArgumentNullException(nameof(entity));
+        }
+
+        await _context.AddAsync(entity);
+
+        // publish event here
+    }
+
+    /// <inheritdoc/>
+    public virtual async Task InsertAsync(IList<TEntity> entities, bool publishEvent = true)
+    {
+        if (entities == null)
+        {
+            throw new ArgumentNullException(nameof(entities));
+        }
+
+        await _context.AddRangeAsync(entities);
+
+        // publish event here
+    }
+
+    /// <inheritdoc/>
+    public virtual Task UpdateAsync(TEntity entity, bool publishEvent = true)
+    {
+        if (entity == null)
+        {
+            throw new ArgumentNullException(nameof(entity));
+        }
+
+        _context.Update(entity);
+
+        // publish event here
+
+        return Task.CompletedTask;
+    }
+
+    /// <inheritdoc/>
+    public virtual Task UpdateAsync(IList<TEntity> entities, bool publishEvent = true)
+    {
+        if (entities == null)
+        {
+            throw new ArgumentNullException(nameof(entities));
+        }
+
+        if (entities.Count == 0)
+        {
+            return Task.CompletedTask;
+        }
+
+        _context.UpdateRange(entities);
+
+        // publish event here
+
+        return Task.CompletedTask;
+    }
+
+    /// <inheritdoc/>
+    public virtual Task DeleteAsync(TEntity entity, bool publishEvent = true)
+    {
+        switch (entity)
+        {
+            case null:
+                throw new ArgumentNullException(nameof(entity));
+            case ISoftDeleteEntity softDeletedEntity:
+                softDeletedEntity.Deleted = true;
+                _context.Update(entity);
+                break;
+            default:
+                _context.Remove(entity);
+                break;
+        }
+
+        return Task.CompletedTask;
+    }
+
+    /// <inheritdoc/>
+    public virtual Task DeleteAsync(IList<TEntity> entities, bool publishEvent = true)
+    {
+        if (entities == null)
+        {
+            throw new ArgumentNullException(nameof(entities));
+        }
+
+        if (entities.OfType<ISoftDeleteEntity>().Any())
+        {
+            foreach (var entity in entities)
+            {
+                if (entity is ISoftDeleteEntity softDeletedEntity)
+                {
+                    softDeletedEntity.Deleted = true;
+                    _context.Update(entity);
+                }
+            }
         }
         else
         {
-            this.Entities.Attach(entity);
-            this.Context.Entry<TEntity>(entity).State = EntityState.Deleted;
+            _context.RemoveRange(entities);
         }
+
+        // publish event here
+
+        return Task.CompletedTask;
     }
 
-    public void DeleteRange(IEnumerable<TEntity> entities) => Entities.RemoveRange(entities);
+    /// <inheritdoc/>
+    public virtual IQueryable<TEntity> Query => _context.Set<TEntity>();
 
-    public Task<List<TEntity>> ToListAsync(
-      IQueryable<TEntity> queryable,
-      CancellationToken cancellationToken = default(CancellationToken))
+    protected virtual async Task<IList<TEntity>?> GetEntitiesAsync(Func<Task<IList<TEntity>?>> getAllAsync,
+        Func<ICacheManager, CacheKey>? getCacheKey)
     {
-        return (Task<List<TEntity>>) EntityFrameworkQueryableExtensions.ToListAsync<TEntity>((IQueryable<TEntity>) queryable, cancellationToken);
+        if (getCacheKey == null)
+        {
+            return await getAllAsync();
+        }
+
+        var cacheKey = getCacheKey(_staticCacheManager)
+                       ?? _staticCacheManager.PrepareKeyForDefaultCache(EntityCacheDefaults<TEntity>.AllCacheKey);
+
+        return await _staticCacheManager.GetAsync(cacheKey, getAllAsync);
     }
 
-    public Task<TEntity> FirstOrDefaultAsync(
-      IQueryable<TEntity> queryable,
-      CancellationToken cancellationToken = default(CancellationToken))
+    protected virtual async Task<IList<TEntity>?> GetEntitiesAsync(Func<Task<IList<TEntity>?>> getAllAsync,
+        Func<ICacheManager, Task<CacheKey>>? getCacheKey)
     {
-        return (Task<TEntity>) EntityFrameworkQueryableExtensions.FirstOrDefaultAsync<TEntity>((IQueryable<TEntity>) queryable, cancellationToken);
+        if (getCacheKey == null)
+        {
+            return await getAllAsync();
+        }
+
+        var cacheKey = await getCacheKey(_staticCacheManager)
+                       ?? _staticCacheManager.PrepareKeyForDefaultCache(EntityCacheDefaults<TEntity>.AllCacheKey);
+
+        return await _staticCacheManager.GetAsync(cacheKey, getAllAsync);
     }
 
-    public Task<TEntity> FirstAsync(
-      IQueryable<TEntity> queryable,
-      CancellationToken cancellationToken = default(CancellationToken))
+    protected virtual IList<TEntity>? GetEntities(Func<IList<TEntity>?> getAll,
+        Func<ICacheManager, CacheKey>? getCacheKey)
     {
-        return (Task<TEntity>) EntityFrameworkQueryableExtensions.FirstAsync<TEntity>((IQueryable<TEntity>) queryable, cancellationToken);
+        if (getCacheKey == null)
+        {
+            return getAll();
+        }
+
+        var cacheKey = getCacheKey(_staticCacheManager)
+                       ?? _staticCacheManager.PrepareKeyForDefaultCache(EntityCacheDefaults<TEntity>.AllCacheKey);
+
+        return _staticCacheManager.Get(cacheKey, getAll);
     }
 
-    public Task<TEntity> SingleOrDefaultAsync(
-      IQueryable<TEntity> queryable,
-      CancellationToken cancellationToken = default(CancellationToken))
+    protected virtual IQueryable<TEntity> AddDeletedFilter(IQueryable<TEntity> query, bool includeDeleted)
     {
-        return (Task<TEntity>) EntityFrameworkQueryableExtensions.SingleOrDefaultAsync<TEntity>((IQueryable<TEntity>) queryable, cancellationToken);
-    }
+        if (includeDeleted)
+        {
+            return query;
+        }
 
-    public Task<TEntity> SingleAsync(
-      IQueryable<TEntity> queryable,
-      CancellationToken cancellationToken = default(CancellationToken))
-    {
-        return (Task<TEntity>) EntityFrameworkQueryableExtensions.SingleAsync<TEntity>((IQueryable<TEntity>) queryable, cancellationToken);
-    }
+        if (typeof(TEntity).GetInterface(nameof(ISoftDeleteEntity)) == null)
+        {
+            return query;
+        }
 
-    public Task<bool> AnyAsync(
-      IQueryable<TEntity> queryable,
-      CancellationToken cancellationToken = default(CancellationToken))
-    {
-        return EntityFrameworkQueryableExtensions.AnyAsync<TEntity>((IQueryable<TEntity>) queryable, cancellationToken);
-    }
-
-    public Task<int> CountAsync(
-      IQueryable<TEntity> queryable,
-      CancellationToken cancellationToken = default(CancellationToken))
-    {
-        return EntityFrameworkQueryableExtensions.CountAsync<TEntity>((IQueryable<TEntity>) queryable, cancellationToken);
+        return query.OfType<ISoftDeleteEntity>().Where(entry => !entry.Deleted).OfType<TEntity>();
     }
     
-    public Task SaveChangesAsync(CancellationToken cancellationToken = default(CancellationToken)) => 
-        Context.SaveChangesAsync();
+    public Task SaveChangesAsync(CancellationToken cancellationToken = default) =>
+        _context.SaveChangesAsync(cancellationToken);
 }
     

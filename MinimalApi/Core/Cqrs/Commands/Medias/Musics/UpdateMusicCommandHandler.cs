@@ -20,8 +20,7 @@ public class UpdateMusicCommandHandler : IRequestHandler<UpdateMusicCommand, Mus
     public async Task<MusicModel> Handle(UpdateMusicCommand request, CancellationToken cancellationToken)
     {
         var music = await _musicRepository
-            .GetEntities()
-            .FirstOrDefaultAsync(e => e.Id == request.Id, cancellationToken);
+            .GetByIdAsync(request.Id);
 
         if (music != null)
         {

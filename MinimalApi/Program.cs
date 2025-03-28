@@ -11,28 +11,34 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 using FluentValidation;
 using Microsoft.AspNetCore.Identity;
+using MinimalApi.Core.Caching;
 using MinimalApi.Core.Validators;
 using MinimalApi.Web;
 
-WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
+var builder = WebApplication.CreateBuilder(args);
 
 var services = builder.Services;
 var configuration = builder.Configuration;
 
-services.AddDbContext<ApplicationContext>(options =>
+services.AddDbContext<ApplicationContext>((serviceProvider, options) =>
 {
-    options.UseSqlite("Data Source=./app.db");
-    //.UseModel(ApplicationContextModel.Instance.CreateModel());
+    var config = serviceProvider.GetRequiredService<IConfiguration>();
+    var dbEngine = config.GetValue<string>("App:DatabaseEngine");
+
+    if (dbEngine == "InMemory")
+    {
+        options.UseInMemoryDatabase("TestDb");
+    }
+    else
+    {
+        options.UseSqlite("Data Source=./app.db");
+    }
 });
 services.AddScoped<IDatabaseFactory, DatabaseFactory>();
 services.AddValidatorsFromAssemblyContaining<CreateUserCommandValidator>();
 
-services.AddTransient<IEntityRepository<UserEntity>, BaseEntityRepository<UserEntity>>();
-services.AddTransient<IEntityRepository<GenreEntity>, BaseEntityRepository<GenreEntity>>();
-services.AddTransient<IEntityRepository<PlatformEntity>, BaseEntityRepository<PlatformEntity>>();
-services.AddTransient<IEntityRepository<MediaEntity>, BaseEntityRepository<MediaEntity>>();
-services.AddTransient<IEntityRepository<MovieEntity>, BaseEntityRepository<MovieEntity>>();
-services.AddTransient<IEntityRepository<MusicEntity>, BaseEntityRepository<MusicEntity>>();
+services.AddTransient<ICacheManager, NoopCacheManager>();
+services.AddScoped(typeof(IEntityRepository<>), typeof(EntityRepository<>));
 
 services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(Assembly.GetExecutingAssembly()));
 services.AddControllers()
@@ -53,3 +59,4 @@ app.UseSwaggerUI();
 
 app.Run();
 
+public partial class Program { }

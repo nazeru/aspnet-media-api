@@ -29,7 +29,7 @@ public class MediaController
     }
     
     [HttpGet("GetMediaById")]
-    public async Task<MediaModel> GetMediaByIdAsync([FromBody] GetMediaByIdQuery getMediaByIdQuery)
+    public async Task<MediaModel> GetMediaByIdAsync([FromQuery] GetMediaByIdQuery getMediaByIdQuery)
     {
         return await _mediator.Send(getMediaByIdQuery);
     }
@@ -41,7 +41,7 @@ public class MediaController
     }
 
     [HttpGet("movies/GetMoviesById")]
-    public async Task<MovieModel> GetMovieByIdAsync([FromBody] GetMovieByIdQuery getMovieByIdQuery)
+    public async Task<MovieModel> GetMovieByIdAsync([FromQuery] GetMovieByIdQuery getMovieByIdQuery)
     {
         return await _mediator.Send(getMovieByIdQuery);
     }
@@ -53,7 +53,7 @@ public class MediaController
     }
 
     [HttpGet("musics/GetMusicById")]
-    public async Task<MusicModel> GetMusicByIdAsync([FromBody] GetMusicByIdQuery getMusicByIdQuery)
+    public async Task<MusicModel> GetMusicByIdAsync([FromQuery] GetMusicByIdQuery getMusicByIdQuery)
     {
         return await _mediator.Send(getMusicByIdQuery);
     }

@@ -19,7 +19,7 @@ public class CreateGenreCommandHandler : IRequestHandler<CreateGenreCommand, Gen
     public async Task<GenreModel> Handle(CreateGenreCommand request, CancellationToken cancellationToken)
     {
         var genre = _mapper.Map<GenreEntity>(request);
-        _genreRepository.Add(genre);
+        await _genreRepository.InsertAsync(genre);
         await _genreRepository.SaveChangesAsync(cancellationToken);
         return _mapper.Map<GenreModel>(genre);
     }

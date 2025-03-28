@@ -22,10 +22,9 @@ public class GetMoviesQueryHandler : IRequestHandler<GetMoviesQuery, List<MovieM
 
     public async Task<List<MovieModel>> Handle(GetMoviesQuery request, CancellationToken cancellationToken)
     {
-        var movies = await _movieRepository
-            .GetEntities()
-            .Include(m => m.Genres)
-            .ToListAsync();
-        return _mapper.Map<List<MovieModel>>(movies);
+        var query = _movieRepository.Query
+            .Include(e => e.Genres);
+
+        return _mapper.Map<List<MovieModel>>(await query.ToListAsync(cancellationToken));
     }
 }

@@ -20,8 +20,7 @@ public class PatchMovieCommandHandler : IRequestHandler<PatchMovieCommand, Movie
     public async Task<MovieModel> Handle(PatchMovieCommand request, CancellationToken cancellationToken)
     {
         var movie = await _movieRepository
-            .GetEntities()
-            .FirstOrDefaultAsync(e => e.Id == request.Id, cancellationToken);
+            .GetByIdAsync(request.Id);
         request.Content.ApplyTo(movie);
         await _movieRepository.SaveChangesAsync(cancellationToken);
         return _mapper.Map<MovieModel>(movie);

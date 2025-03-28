@@ -19,7 +19,7 @@ public class CreatePlatformCommandHandler : IRequestHandler<CreatePlatformComman
     public async Task<PlatformModel> Handle(CreatePlatformCommand request, CancellationToken cancellationToken)
     {
         var platform = _mapper.Map<PlatformEntity>(request);
-        _platformRepository.Add(platform);
+        await _platformRepository.InsertAsync(platform);
         await _platformRepository.SaveChangesAsync(cancellationToken);
         return _mapper.Map<PlatformModel>(platform);
     }

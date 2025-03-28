@@ -20,8 +20,7 @@ public class UpdateUserCommandHandler : IRequestHandler<UpdateUserCommand, UserM
     public async Task<UserModel> Handle(UpdateUserCommand request, CancellationToken cancellationToken)
     {
         var user = await _userRepository
-            .GetEntities()
-            .FirstOrDefaultAsync(e => e.Id == request.Id, cancellationToken);
+            .GetByIdAsync(request.Id);
 
         if (user != null)
         {

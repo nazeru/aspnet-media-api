@@ -17,9 +17,8 @@ public class DeleteMusicCommandHandler : IRequestHandler<DeleteMusicCommand>
     public async Task Handle(DeleteMusicCommand request, CancellationToken cancellationToken)
     {
         var music = await _musicRepository
-            .GetEntities()
-            .FirstOrDefaultAsync(e => e.Id == request.Id, cancellationToken);
-        _musicRepository.Delete(music);
+            .GetByIdAsync(request.Id);
+        await _musicRepository.DeleteAsync(music);
         await _musicRepository.SaveChangesAsync(cancellationToken);
     }
 }

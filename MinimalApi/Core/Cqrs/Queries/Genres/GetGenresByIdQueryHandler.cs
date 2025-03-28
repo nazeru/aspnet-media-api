@@ -20,8 +20,7 @@ public class GetGenresByIdQueryHandler : IRequestHandler<GetGenreByIdQuery, Genr
     public async Task<GenreModel> Handle(GetGenreByIdQuery request, CancellationToken cancellationToken)
     {
         var genre = await _genreRepository
-            .GetEntities()
-            .FirstOrDefaultAsync(x => x.Id == request.Id, cancellationToken);
+            .GetByIdAsync(request.Id);
         return _mapper.Map<GenreModel>(genre);
     }
 }

@@ -9,6 +9,7 @@ public class ApplicationContext : DbContext
     public ApplicationContext(DbContextOptions<ApplicationContext> options) : base(options)
     {
         Database.EnsureCreated();
+        SavingChanges += DataContext_SavingChanges;
     }
     
     public DbSet<UserEntity> Users { get; set; }
@@ -48,5 +49,23 @@ public class ApplicationContext : DbContext
             .WithMany(p => p.Medias)
             .HasForeignKey(m => m.PlatformId)
             .OnDelete(DeleteBehavior.Cascade);
+    }
+    
+    private void DataContext_SavingChanges(object? sender, SavingChangesEventArgs e)
+    {
+        var entries = ChangeTracker.Entries()
+            .Where(entry => entry.State == EntityState.Modified || entry.State == EntityState.Added);
+
+        foreach (var entry in entries)
+        {
+            if (entry.Entity is BaseEntity entity)
+            {
+                entity.ModifiedOn = DateTime.UtcNow;
+                if (entry.State == EntityState.Added)
+                {
+                    entity.CreatedOn = entity.ModifiedOn;
+                }
+            }
+        }
     }
 }

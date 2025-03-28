@@ -19,10 +19,11 @@ public class GetMovieByIdQueryHandler : IRequestHandler<GetMovieByIdQuery, Movie
     
     public async Task<MovieModel> Handle(GetMovieByIdQuery request, CancellationToken cancellationToken)
     {
-        var movie = await _movieRepository
-            .GetEntities()
-            .FirstOrDefaultAsync(e => e.Id == request.Id, cancellationToken);
+        var music = _movieRepository
+            .Query
+            .Include(e => e.Genres)
+            .Single(e => e.Id == request.Id);
         
-        return _mapper.Map<MovieModel>(movie);
+        return _mapper.Map<MovieModel>(music);
     }
 }

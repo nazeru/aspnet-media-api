@@ -20,8 +20,7 @@ public class GetPlatformsQueryHandler : IRequestHandler<GetPlatformsQuery, List<
     public async Task<List<PlatformModel>> Handle(GetPlatformsQuery request, CancellationToken cancellationToken)
     {
         var platforms = await _platformRepository
-            .GetEntities()
-            .ToListAsync();
+            .GetAllAsync();
         return _mapper.Map<List<PlatformModel>>(platforms);
     }
 }

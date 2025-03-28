@@ -17,9 +17,8 @@ public class DeletePlatformCommandHandler : IRequestHandler<DeletePlatformComman
     public async Task Handle(DeletePlatformCommand request, CancellationToken cancellationToken)
     {
         var platform = await _platformRepository
-            .GetEntities()
-            .FirstOrDefaultAsync(e => e.Id == request.Id, cancellationToken);
-        _platformRepository.Delete(platform);
+            .GetByIdAsync(request.Id);
+        await _platformRepository.DeleteAsync(platform);
         await _platformRepository.SaveChangesAsync(cancellationToken);
     }
 }

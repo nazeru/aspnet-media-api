@@ -30,8 +30,7 @@ public class CreateMovieCommandHandler : IRequestHandler<CreateMovieCommand, Mov
     {
         // Получаем платформу по PlatformId
         var platform = await _platformRepository
-            .GetEntities()
-            .FirstOrDefaultAsync(e => e.Id == request.PlatformId, cancellationToken);
+            .GetByIdAsync(request.PlatformId);
         if (platform == null)
         {
             throw new ExternalException("Platform not found");
@@ -39,9 +38,7 @@ public class CreateMovieCommandHandler : IRequestHandler<CreateMovieCommand, Mov
         
         // Получаем все жанры по их ID
         var genres = await _genreRepository
-            .GetEntities()
-            .Where(e => request.GenresId.Contains(e.Id))
-            .ToListAsync(cancellationToken);
+            .GetByIdsAsync(request.GenresId);
         if (genres == null || genres.Count == 0)
         {
             throw new ExternalException("Genres not found");
@@ -53,7 +50,7 @@ public class CreateMovieCommandHandler : IRequestHandler<CreateMovieCommand, Mov
         movie.Genres = genres;
 
         // Добавляем фильм в репозиторий
-        _movieRepository.Add(movie);
+        await _movieRepository.InsertAsync(movie);
         await _movieRepository.SaveChangesAsync(cancellationToken);
 
         // Маппим MovieEntity обратно в MovieModel для ответа
