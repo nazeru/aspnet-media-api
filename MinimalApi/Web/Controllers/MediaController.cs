@@ -40,10 +40,16 @@ public class MediaController
         return await _mediator.Send(getMoviesQuery);
     }
 
-    [HttpGet("movies/GetMoviesById")]
+    [HttpGet("movies/GetMovieById")]
     public async Task<MovieModel> GetMovieByIdAsync([FromQuery] GetMovieByIdQuery getMovieByIdQuery)
     {
         return await _mediator.Send(getMovieByIdQuery);
+    }
+    
+    [HttpGet("movies/GetMovieByTitle")]
+    public async Task<MovieModel> GetMovieByTitleAsync([FromQuery] GetMovieByTitleQuery getMovieByTitleQuery)
+    {
+        return await _mediator.Send(getMovieByTitleQuery);
     }
     
     [HttpGet("musics")]

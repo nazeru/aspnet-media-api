@@ -8,5 +8,5 @@ namespace MinimalApi.Connector;
 public interface IOMDbApiRestClient
 {
     [Get("/")]
-    Task<GetMovieByTitleResponseModel> GetMovieByTitle(GetMovieByTitleModel getMovieByTitleModel);
+    Task<GetMovieByTitleResponseModel> GetMovieByTitle([AliasAs("apikey")] string apiKey, GetMovieByTitleModel getMovieByTitleModel);
 }
