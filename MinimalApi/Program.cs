@@ -1,19 +1,16 @@
 using System.Reflection;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.Mvc.NewtonsoftJson;
 using MinimalApi.Core;
-using Swashbuckle.AspNetCore.Swagger;
-using MinimalApi.Core.Entities;
 using MinimalApi.Core.Repositories;
 using MinimalApi.Data;
 using MinimalApi.Data.Repositories;
-using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 using FluentValidation;
-using Microsoft.AspNetCore.Identity;
+using MinimalApi.Connector;
 using MinimalApi.Core.Caching;
 using MinimalApi.Core.Validators;
 using MinimalApi.Web;
+using Refit;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -49,6 +46,11 @@ services.AddControllers()
 services.AddEndpointsApiExplorer();
 services.AddSwaggerGen();
 services.AddAutoMapper(typeof(MappingProfile));
+services.AddRefitClient<IOMDbApiRestClient>()
+    .ConfigureHttpClient(httpClient =>
+    {
+        httpClient.BaseAddress = new Uri("https://www.omdbapi.com/");
+    });
 
 var app = builder.Build();
 
